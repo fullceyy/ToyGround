@@ -1,0 +1,6 @@
+[
+{
+  "directory": "C:\\Users\\arkTK\\Desktop\\ToyGroundRepo\\ToyGround",
+  "arguments": ["C:\\msys64\\mingw64\\bin\\x86_64-w64-mingw32-g++.exe", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++23", "-fexceptions", "-DNDEBUG", "-o", "build\\.objs\\AutoRelease\\windows\\x64\\release\\AutoRelease\\main.cpp.obj", "AutoRelease\\main.cpp"],
+  "file": "AutoRelease\\main.cpp"
+}]

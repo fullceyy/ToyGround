@@ -20,8 +20,7 @@ public:
     // 1. Acquire object.
     ~AutoRelease() { D(); }
     AutoRelease() = default;
-    AutoRelease(U pClass) : Ptr_(new U(pClass)) {}
-    // AutoRelease(U* pPtr) : Ptr_(pPtr) {} // This feels incorrect, not my aim for the class.
+    AutoRelease(U* pPtr) : Ptr_(pPtr) {}
     
     // 2. Rule of five
     AutoRelease(const AutoRelease& other) = delete;
@@ -30,11 +29,10 @@ public:
     AutoRelease(AutoRelease&& other) noexcept
     {
         if(&other == *this)
-            return *this;
+            return;
         
         // Ptr_ = std::exchange(other.Ptr_, nullptr);
         Ptr_ = other.Release(); // both are same?
-        return *this;
     }
     
     AutoRelease& operator=(AutoRelease&& other) {}
@@ -56,11 +54,13 @@ public:
     {
         if(AutoRelease::Get() == nullptr) 
             throw NullAccessError("AutoRelease operator*(): Dereferencing a nullptr!");
-        return AutoRelease::Get();
+        return *(AutoRelease::Get());
     }
     
     auto operator->() const -> const U*
     {
-        if(AutoRelease::Get() )
+        if(AutoRelease::Get() == nullptr)
+            throw NullAccessError("AutoRelease operator->(): Accessing nullptr!");
+        return AutoRelease::Get();
     }
 };
