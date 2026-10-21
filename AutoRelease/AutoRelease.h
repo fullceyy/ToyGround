@@ -16,6 +16,7 @@ class AutoRelease
 private:
     using U = std::remove_extent_t<T>;
     U* Ptr_;
+    [[no_unique_address]] D Deleter_{};
     
     auto CheckReturn(const char* pMsg) const -> U*
     {
@@ -24,32 +25,26 @@ private:
         return Ptr_;
     }
 public:
-    // 1. Acquire object.
-    ~AutoRelease() { D(); }
+    ~AutoRelease() { D{}(Ptr_); }
     AutoRelease() : Ptr_(nullptr) {}
-    AutoRelease(U* pPtr) : Ptr_(pPtr) {}
+    explicit AutoRelease(U* pPtr, D pDeleter) : Ptr_(pPtr), Deleter_(std::move(pDeleter)) {}
     
-    // 2. Rule of five
     AutoRelease(const AutoRelease& other) = delete;
+    
     AutoRelease& operator=(const AutoRelease& other) = delete;
     
     AutoRelease(AutoRelease&& other) noexcept
-    {
-        if(&other == this)
-            return;
-        
-        Ptr_ = other.Release(); // both are same?
-    }
+    : Ptr_(other.Release()), Deleter_(std::move(other.Deleter_)) {}
     
     AutoRelease& operator=(AutoRelease&& other) noexcept
     {
-        if(&other == this)
+        if(&other != this)
+        {
+            Ptr_ = other.Release();
+            Deleter_ = std::move(other.Deleter_);
+        }
             return *this;
-        
-        Ptr_ = other.Release();
-        return *this;
     }
-    
     
     [[nodiscard]] auto Release()  noexcept -> U*
     {
@@ -78,4 +73,32 @@ public:
     {
         return CheckReturn("AutoRelease operator[](): Accessing nullptr!")[idx];
     }
+    
+    explicit operator bool() const noexcept { return (Ptr_ != nullptr); }
+    
+    friend bool operator==(const AutoRelease& lhs, const AutoRelease& rhs) noexcept
+    {
+        return lhs.Ptr_ == rhs.Ptr_;
+    }
+    
+    friend bool operator==(const AutoRelease& lhs, std::nullptr_t) noexcept
+    {
+        return !lhs.Ptr_;
+    }
 };
+
+// std::make_unique<T>();
+template<typename T, typename... Args>
+    requires(!std::is_array_v<T>)
+auto MakeAutoRelease(Args&&... args)
+{
+    return AutoRelease<T>(new T(std::forward<Args>(args)...));
+}
+
+template<typename T>
+    requires std::is_array_v<T>
+auto MakeAutoRelease(std::size_t n)
+{
+    return AutoRelease<T>(new std::remove_extent_t<T>[n]());
+}
+    
