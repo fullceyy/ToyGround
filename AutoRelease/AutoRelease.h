@@ -3,7 +3,7 @@
 #include <type_traits>
 #include <utility>
 #include <stdexcept>
-// #include <print>
+#include <cstddef>
 
 struct NullAccessError : public std::logic_error
 {
@@ -24,9 +24,21 @@ private:
             throw NullAccessError(pMsg);
         return Ptr_;
     }
+    
+    // reacquire the pointer and rid of *this Ptr_.
+    auto Reset(U* pReset = nullptr) -> void
+    {
+        if(U* old = std::exchange(Ptr_, pReset)) Deleter_(old); // for move assignment, prevent leak of *this
+    }
 public:
-    ~AutoRelease() { D{}(Ptr_); }
+    ~AutoRelease() { if(Ptr_) Deleter_(Ptr_); } // check needed for after release it may UB.
+    
     AutoRelease() : Ptr_(nullptr) {}
+    
+    explicit AutoRelease(U* pPtr) 
+        requires(std::is_default_constructible_v<D> && !std::is_pointer_v<D>)
+    : Ptr_(pPtr) {}
+    
     explicit AutoRelease(U* pPtr, D pDeleter) : Ptr_(pPtr), Deleter_(std::move(pDeleter)) {}
     
     AutoRelease(const AutoRelease& other) = delete;
@@ -37,13 +49,13 @@ public:
     : Ptr_(other.Release()), Deleter_(std::move(other.Deleter_)) {}
     
     AutoRelease& operator=(AutoRelease&& other) noexcept
-    {
+    { // leaks if this already has something
         if(&other != this)
         {
-            Ptr_ = other.Release();
+            Reset(other.Release());
             Deleter_ = std::move(other.Deleter_);
         }
-            return *this;
+        return *this;
     }
     
     [[nodiscard]] auto Release()  noexcept -> U*
@@ -75,16 +87,29 @@ public:
     }
     
     explicit operator bool() const noexcept { return (Ptr_ != nullptr); }
-    
+
+    // compares identity to nullptr
+    bool operator==(std::nullptr_t) const noexcept
+    {
+        return !Ptr_;
+    }
+
+    // compares identity of the autorelease object
     friend bool operator==(const AutoRelease& lhs, const AutoRelease& rhs) noexcept
     {
         return lhs.Ptr_ == rhs.Ptr_;
     }
+    // 
+    // friend bool operator!=(const AutoRelease& lhs, const AutoRelease& rhs) noexcept
+    // {
+    //     return !(lhs.Ptr_ == rhs.Ptr_);
+    // }
     
-    friend bool operator==(const AutoRelease& lhs, std::nullptr_t) noexcept
-    {
-        return !lhs.Ptr_;
-    }
+    friend bool operator>=(const AutoRelease&, const AutoRelease&) = delete;
+    friend bool operator<=(const AutoRelease&, const AutoRelease&) = delete;
+    friend bool operator>(const AutoRelease&, const AutoRelease&) = delete;
+    friend bool operator<(const AutoRelease&, const AutoRelease&) = delete;
+
 };
 
 // std::make_unique<T>();
@@ -95,10 +120,10 @@ auto MakeAutoRelease(Args&&... args)
     return AutoRelease<T>(new T(std::forward<Args>(args)...));
 }
 
+//  fix for unbounded array
 template<typename T>
-    requires std::is_array_v<T>
+    requires std::is_unbounded_array_v<T>
 auto MakeAutoRelease(std::size_t n)
 {
     return AutoRelease<T>(new std::remove_extent_t<T>[n]());
 }
-    
