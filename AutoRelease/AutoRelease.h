@@ -24,12 +24,6 @@ private:
             throw NullAccessError(pMsg);
         return Ptr_;
     }
-    
-    // reacquire the pointer and rid of *this Ptr_.
-    auto Reset(U* pReset = nullptr) -> void
-    {
-        if(U* old = std::exchange(Ptr_, pReset)) Deleter_(old); // for move assignment, prevent leak of *this
-    }
 public:
     ~AutoRelease() { if(Ptr_) Deleter_(Ptr_); } // check needed for after release it may UB.
     
@@ -61,6 +55,12 @@ public:
     [[nodiscard]] auto Release()  noexcept -> U*
     {
         return std::exchange(Ptr_, nullptr);
+    }
+    
+    // reacquire the pointer and rid of *this Ptr_.
+    auto Reset(U* pReset = nullptr) -> void
+    {
+        if(U* old = std::exchange(Ptr_, pReset)) Deleter_(old); // for move assignment, prevent leak of *this
     }
     
     [[nodiscard]] auto Get() const noexcept -> U*
@@ -109,7 +109,11 @@ public:
     friend bool operator<=(const AutoRelease&, const AutoRelease&) = delete;
     friend bool operator>(const AutoRelease&, const AutoRelease&) = delete;
     friend bool operator<(const AutoRelease&, const AutoRelease&) = delete;
-
+    friend auto swap(AutoRelease& a, AutoRelease& b) noexcept -> void
+    {
+        std::swap(a.Ptr_, b.Ptr_);
+        std::swap(a.Deleter_, b.Deleter_);
+    }
 };
 
 // std::make_unique<T>();
