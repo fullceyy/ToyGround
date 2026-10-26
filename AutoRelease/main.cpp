@@ -1,6 +1,8 @@
 #include "AutoRelease.h"
 #include <cstdio>
 
+using namespace ToyGround;
+
 int main(void)
 {
     auto a = MakeAutoRelease<int>(5);
@@ -14,7 +16,8 @@ int main(void)
     auto arr = MakeAutoRelease<int[]>(3);
     arr[1] = 42;
 
-    AutoRelease<std::FILE, decltype(&std::fclose)> f(std::fopen("x.txt", "w"), &std::fclose);
+    // AutoRelease<std::FILE, decltype(&std::fclose)> f(std::fopen("x.txt", "w"), &std::fclose);
+    // creates a .txt btw :0
 
     static_assert(std::equality_comparable<AutoRelease<int>>);
     static_assert(!std::totally_ordered<AutoRelease<int>>);

@@ -17,6 +17,9 @@
 #include <stdexcept>
 #include <cstddef>
 
+namespace ToyGround
+{
+
 struct NullAccessError : public std::logic_error
 {
     using std::logic_error::logic_error;
@@ -121,7 +124,7 @@ public:
     friend bool operator<=(const AutoRelease&, const AutoRelease&) = delete;
     friend bool operator>(const AutoRelease&, const AutoRelease&) = delete;
     friend bool operator<(const AutoRelease&, const AutoRelease&) = delete;
-    friend auto swap(AutoRelease& a, AutoRelease& b) noexcept -> void
+    friend auto Swap(AutoRelease& a, AutoRelease& b) noexcept -> void
     {
         std::swap(a.Ptr_, b.Ptr_);
         std::swap(a.Deleter_, b.Deleter_);
@@ -142,4 +145,6 @@ template<typename T>
 auto MakeAutoRelease(std::size_t n)
 {
     return AutoRelease<T>(new std::remove_extent_t<T>[n]());
+}
+
 }

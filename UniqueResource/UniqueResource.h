@@ -27,6 +27,8 @@
 #include <type_traits>
 #include <utility>
 
+namespace ToyGround
+{
 template<typename T, typename D = void (*)(T)>
 requires std::is_trivially_copyable_v<T>
 class UniqueResource
@@ -127,4 +129,6 @@ auto UniqueResource<T, D>::Reset(T pRes) -> void
         Del_(Res_);
     
     Res_ = pRes;
+}
+
 }

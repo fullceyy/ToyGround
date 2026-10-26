@@ -10,7 +10,7 @@ target_end()
 target("AutoReleaseTests")
     set_kind("binary")
     add_files("tests/*.cpp")
-    add_includedirs(".")          -- so tests can #include "AutoRelease.hpp"
+    add_includedirs(".")          -- so tests can #include "AutoRelease.h"
     add_packages("doctest")
     add_tests("default")          -- registers it with `xmake test`
     set_default(false)
