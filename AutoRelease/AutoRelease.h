@@ -1,4 +1,16 @@
 #pragma once
+
+// The resource is owned exclusively and released exactly once.
+//
+// Invariants:
+// - Ptr_ == nullptr means the object is empty.
+// - A non-null Ptr_ is owned by this object and released by Deleter_.
+// - A moved-from object is empty.
+// - The deleter is never called with nullptr.
+// - Copying is impossible; moving transfers ownership.
+// - The destructor never throws.
+
+
 #include <memory>
 #include <type_traits>
 #include <utility>
