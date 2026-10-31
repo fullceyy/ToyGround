@@ -1,4 +1,4 @@
-set_project("TG")
+set_project("ToyGround")
 set_toolchains("mingw")
 set_languages("c++23")
 add_rules("mode.debug", "mode.release")

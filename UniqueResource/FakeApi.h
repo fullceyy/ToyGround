@@ -7,6 +7,8 @@
 
 #include "UniqueResource.h"
 
+using namespace ToyGround;
+
 namespace fake
 {
 // ---- registry: the "driver" -------------------------------------------------

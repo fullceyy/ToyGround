@@ -11,6 +11,8 @@
 
 #include "AutoRelease.h"
 
+using namespace ToyGround;
+
 // ---- tiny harness: failures are recorded, execution continues ---------------
 static int g_checks = 0, g_failures = 0;
 #define CHECK(expr)                                                              \
