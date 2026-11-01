@@ -14,6 +14,8 @@
 
 // Undo unless we succeed logic.
 
+// move constructible if 
+
 /*
 The preprocessor’s rule:
 when a macro parameter appears next to # or ##,
@@ -36,8 +38,8 @@ and increments by 1 every time it is evaluated in a translation unit.
 #define cc1(x, y) cc2(x, y)
 
 #define Defer(code) [[maybe_unused]] ToyGround::DeferImpl cc1(defer_, __COUNTER__){[&]{ code; }}
-#define DeferFail(code) [[maybe_unused]] ToyGround::DeferImplScopeFail cc1(defer_, __COUNTER__){[&]{ code; }};
-#define DeferSuccess()
+#define DeferFail(code) [[maybe_unused]] ToyGround::DeferImplScopeFail cc1(defer_, __COUNTER__){[&]{ code; }}
+#define DeferSuccess(code) [[maybe_unused]] ToyGround::DeferImplScopeSuccess cc1(defer_, __COUNTER__){[&]{ code; }}
 
 namespace ToyGround
 {
@@ -83,5 +85,24 @@ public:
     auto Dismiss() -> void { Flag_ = true; }
 };
 
+template <typename T>
+class DeferImplScopeSuccess
+{
+private:
+    T Call_;
+    bool Flag_ {false};
+    int Exceptions_ {std::uncaught_exceptions()};
+public:
+    explicit DeferImplScopeSuccess(T p) : Call_(std::move(p)) {}
+    ~DeferImplScopeSuccess() { if(!Flag_ && (std::uncaught_exceptions() <= Exceptions_)) Call_(); }
+    
+    DeferImplScopeSuccess(const DeferImplScopeSuccess&) = delete;
+    DeferImplScopeSuccess& operator=(const DeferImplScopeSuccess&) = delete;
+    
+    DeferImplScopeSuccess(DeferImplScopeSuccess&&) = delete;
+    DeferImplScopeSuccess& operator=(DeferImplScopeSuccess&&) = delete;
+    
+    auto Dismiss() -> void { Flag_ = true; }
+};
 
 }
