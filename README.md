@@ -74,10 +74,6 @@ A move-only owner for a trivially copyable handle, with a per-object *sentinel* 
 UniqueResource<GLuint> vbo{0u, [](GLuint b) { glDeleteBuffers(1, &b); }};
 glCreateBuffers(1, &vbo);                  // operator& exposes the handle as an out-parameter
 glBindBuffer(GL_ARRAY_BUFFER, vbo);        // implicit conversion to the handle
-
-// POSIX style: -1 means "no descriptor" (0 is a real fd)
-UniqueResource<int> fd{-1, &::close};
-fd.Reset(::open("data.bin", O_RDONLY));
 ```
 
 ### Design decisions
