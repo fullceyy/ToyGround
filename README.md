@@ -5,20 +5,20 @@ A playground for modern C++ (C++23) utilities, built to learn by reimplementing 
 | Utility | What it owns | Closest standard equivalent |
 |---|---|---|
 | [`AutoRelease`](AutoRelease/AutoRelease.h) | a heap object or array, through a pointer | `std::unique_ptr` |
-| [`UniqueResource`](UniqueResource/UniqueResource.h) | a plain handle value (`GLuint`, file descriptor, `FILE*`) | `std::unique_resource` (proposed) |
-| [`Defer`]| In Progress... | In Progress... |
-| [`OutPtr`]| In Progress... | In Progress... |
-| [`Error`]| In Progress... | In Progress... |
+| [`UniqueResource`](UniqueResource/UniqueResource.h) | a plain handle value (`GLuint`, file descriptor, `FILE*`) | `std::unique_resource` (similar) |
+| [`Defer`](Defer/Defer.h) | a cleanup action to run at scope exit, on failure, or on success | `std::experimental::scope_exit` / `scope_fail` / `scope_success` (similar) |
+| `OutPtr` | In Progress... | `std::out_ptr` |
+| `Error` | In Progress... | In Progress... |
+
 ## Building
 
 The project uses [xmake](https://xmake.io) and needs a C++23 compiler (GCC 14+ or Clang 18+).
 
 ```sh
-xmake            # configure and build
-xmake test       # build and run every test suite
-xmake run [target_name_here]Tests
-xmake run [target_name_here]Tests
-xmake run [target_name_here]    # small example program
+xmake                              # configure and build
+xmake test                         # build and run every test suite
+xmake run [target_name_here]Tests  # run one test suite
+xmake run [target_name_here]       # small example program
 ```
 
 The root `xmake.lua` selects the MinGW toolchain (`set_toolchains("mingw")`). On Linux or macOS, remove that line or override it with `xmake f --toolchain=gcc` (or `clang`).
@@ -91,6 +91,62 @@ fd.Reset(::open("data.bin", O_RDONLY));
 
 Pick the value the API itself uses for "no resource": `0` for OpenGL names, `-1` for POSIX descriptors, `nullptr` for `FILE*`. A wrong sentinel silently leaks or releases a real handle.
 
+## Defer
+
+Scope guards that run a block of code when the enclosing scope ends, in the spirit of Go's `defer`. There are three variants, chosen by how the scope is left.
+
+```cpp
+#include "Defer.h"
+
+void Process() {
+    std::FILE* f = std::fopen("log.txt", "w");
+    Defer(std::fclose(f));                        // always runs at scope exit
+
+    BeginTransaction();
+    DeferFail(Rollback());                        // runs only if an exception escapes the scope
+    DeferSuccess(Commit());                       // runs only if the scope exits normally
+
+    // ... risky work ...
+}
+```
+
+| Macro | Runs when | Underlying type |
+|---|---|---|
+| `Defer(code)` | the scope exits, by any means | `ToyGround::DeferImpl` |
+| `DeferFail(code)` | the scope exits because of an exception | `ToyGround::DeferImplScopeFail` |
+| `DeferSuccess(code)` | the scope exits normally | `ToyGround::DeferImplScopeSuccess` |
+
+### Design decisions
+
+- **Macros create an anonymous guard.** Each macro wraps `code` in a `[&]` lambda and declares a uniquely named guard (`defer_0`, `defer_1`, …) using `__COUNTER__`, so several guards can live in one scope without naming them.
+- **The callable is a template parameter**, deduced from the lambda (CTAD), rather than `std::function`. There is no allocation or indirect call.
+- **Neither copyable nor movable.** A guard is bound to the scope it was declared in. Copying would run the cleanup twice, and moving it out would change when it runs.
+- **Failure is detected with `std::uncaught_exceptions()`.** The count is recorded at construction and compared in the destructor, so the fail/success variants behave correctly even when constructed inside another object's destructor during stack unwinding (which the older `std::uncaught_exception()` could not handle).
+- **Guards can be dismissed.** `Dismiss()` cancels the cleanup, for the "set up an undo, do the risky step, cancel the undo on success" pattern.
+- **Cleanup runs in reverse order of declaration**, like any other local destructor, so later guards can rely on earlier resources still being alive.
+
+### Using `Dismiss`
+
+The macros hide the guard's name, so to call `Dismiss()` declare the guard directly:
+
+```cpp
+ToyGround::DeferImpl undo{[&] { RemoveTempFile(path); }};
+WriteTempFile(path);
+RenameIntoPlace(path);
+undo.Dismiss();                                   // success: keep the file
+```
+
+### Known limitations
+
+- The lambda captures everything by reference, so the guard must not outlive anything it uses (it can't, as long as it's only used through the macros).
+- The cleanup code must not throw. Destructors are `noexcept`, so an exception escaping the guard calls `std::terminate`.
+- `__COUNTER__` is a compiler extension, though GCC, Clang and MSVC all support it.
+- `code` is a single macro argument, so a top-level comma outside parentheses (for example `std::map<int, int> m`) breaks it. Wrap such code in a function call or extra parentheses.
+
+### When to use it
+
+`Defer` is for one-off cleanup that doesn't deserve its own type. When the same resource is acquired in many places, prefer `AutoRelease` or `UniqueResource`, which also give ownership transfer and a reusable deleter.
+
 ## Tests
 
 Each utility has a dependency-free test suite in `<Utility>/tests/`, with a small built-in harness that keeps running after a failure and prints a summary. The tests check two things:
@@ -109,8 +165,11 @@ ToyGround/
 │   ├── AutoRelease.h
 │   ├── main.cpp           # example program
 │   └── tests/tests.cpp
-└── UniqueResource/
-    ├── UniqueResource.h
-    ├── FakeApi.h          # fake GL/POSIX handle API used by the tests
+├── UniqueResource/
+│   ├── UniqueResource.h
+│   ├── FakeApi.h          # fake GL/POSIX handle API used by the tests
+│   └── tests/tests.cpp
+└── Defer/
+    ├── Defer.h
     └── tests/tests.cpp
 ```
