@@ -46,7 +46,7 @@ arr[3] = 7;
 AutoRelease<std::FILE, decltype(&std::fclose)> file(std::fopen("log.txt", "w"), &std::fclose);
 ```
 
-**Interface:** `Get`, `Release`, `Reset`, `swap`, `explicit operator bool`, `*`, `->`, and `[]` (arrays only), plus `==` against another `AutoRelease` or against `nullptr`.
+**Interface:** `Get`, `Release`, `Reset`, `Swap`, `explicit operator bool`, `*`, `->`, and `[]` (arrays only), plus `==` against another `AutoRelease` or against `nullptr`.
 
 ### Design decisions
 

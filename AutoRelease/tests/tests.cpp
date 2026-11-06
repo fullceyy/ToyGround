@@ -117,7 +117,7 @@ static_assert(!std::is_copy_constructible_v<AR>);
 static_assert(!std::is_copy_assignable_v<AR>);
 static_assert(std::is_nothrow_move_constructible_v<AR>);
 static_assert(std::is_nothrow_move_assignable_v<AR>);
-static_assert(noexcept(swap(std::declval<AR&>(), std::declval<AR&>())));
+static_assert(noexcept(Swap(std::declval<AR&>(), std::declval<AR&>())));
 static_assert(noexcept(std::declval<AR&>().Release()));
 static_assert(noexcept(std::declval<const AR&>().Get()));
 
@@ -387,8 +387,8 @@ TEST(returned_from_function_and_passed_to_sink)
     }
 }
 
-// ---- swap -------------------------------------------------------------------------------
-TEST(swap_exchanges_pointers)
+// ---- Swap -------------------------------------------------------------------------------
+TEST(Swap_exchanges_pointers)
 {
     Fresh();
     {
@@ -396,7 +396,7 @@ TEST(swap_exchanges_pointers)
         auto b = MakeAutoRelease<Tracked>(2);
         Tracked* pa = a.Get();
         Tracked* pb = b.Get();
-        swap(a, b);
+        Swap(a, b);
         CHECK(a.Get() == pb);
         CHECK(b.Get() == pa);
         CHECK(Tracked::alive == 2);
@@ -404,25 +404,25 @@ TEST(swap_exchanges_pointers)
     CHECK(Tracked::alive == 0);
 }
 
-TEST(swap_with_empty)
+TEST(Swap_with_empty)
 {
     Fresh();
     {
         auto a = MakeAutoRelease<Tracked>(1);
         AR b;
-        swap(a, b);
+        Swap(a, b);
         CHECK(!a);
         CHECK(static_cast<bool>(b));
     }
     CHECK(Tracked::alive == 0);
 }
 
-TEST(swap_with_itself_is_safe)
+TEST(Swap_with_itself_is_safe)
 {
     Fresh();
     {
         auto a = MakeAutoRelease<Tracked>(1);
-        swap(a, a);
+        Swap(a, a);
         CHECK(static_cast<bool>(a));
         CHECK(Tracked::alive == 1);
     }
@@ -503,7 +503,7 @@ TEST(lambda_deleter_is_used)
     }
     CHECK(lambdaCalls == 1);                  // exactly once, by the final owner
     CHECK(Tracked::alive == 0);
-    // Note: move assignment and swap need an assignable deleter, so they do not
+    // Note: move assignment and Swap need an assignable deleter, so they do not
     // compile for closure types. That is a documented limitation.
 }
 
@@ -559,7 +559,7 @@ TEST(move_assignment_uses_old_deleter_for_old_pointer_and_new_for_new)
     CHECK(CountingDeleter::log.size() == 2);
 }
 
-TEST(swap_exchanges_deleters_with_pointers)
+TEST(Swap_exchanges_deleters_with_pointers)
 {
     Fresh();
     Tracked* rawA = new Tracked(1);
@@ -567,7 +567,7 @@ TEST(swap_exchanges_deleters_with_pointers)
     {
         AutoRelease<Tracked, CountingDeleter> a(rawA, CountingDeleter{1});
         AutoRelease<Tracked, CountingDeleter> b(rawB, CountingDeleter{2});
-        swap(a, b);
+        Swap(a, b);
     }
     CHECK(TimesCalled(1, rawA) == 1);         // each pointer was still released by its own deleter
     CHECK(TimesCalled(2, rawB) == 1);
