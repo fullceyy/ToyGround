@@ -29,7 +29,7 @@
 
 namespace ToyGround
 {
-template<typename T, typename D = void (*)(T)>
+template <typename T, typename D = void (*)(T)>
 requires std::is_trivially_copyable_v<T>
 class UniqueResource
 {
