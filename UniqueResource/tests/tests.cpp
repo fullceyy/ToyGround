@@ -32,27 +32,10 @@ static_assert(!std::is_copy_constructible_v<UR>);
 static_assert(!std::is_copy_assignable_v<UR>);
 static_assert(std::is_nothrow_move_constructible_v<UR>);
 static_assert(std::is_nothrow_move_assignable_v<UR>);
+static_assert(!std::is_default_constructible_v<UR>);
 static_assert(sizeof(UniqueResource<unsigned, void (*)(unsigned)>) >= sizeof(unsigned));
 
 // ---- construction & destruction ---------------------------------------------
-TEST(default_constructed_is_empty)
-{
-    Fresh();
-    {
-        UR r;
-        CHECK(!r);
-        CHECK(r.Get() == 0u);
-    }
-    CHECK(fake::Registry::destroys == 0);       // deleter never called on sentinel
-}
-
-TEST(default_constructed_with_function_pointer_deleter_is_safe)
-{
-    Fresh();
-    { UR r; (void)r; }                          // Del_ is uninitialised in the default ctor
-    CHECK(fake::Registry::destroys == 0);
-}
-
 TEST(destructor_releases_exactly_once)
 {
     Fresh();
@@ -205,7 +188,7 @@ TEST(swap_carries_the_sentinel)
     Fresh();
     {
         UniqueResource<int> fd(-1, &fake::Close);
-        UniqueResource<int> empty;              // sentinel 0, handle 0
+        UniqueResource<int> empty(0, &fake::Close); // sentinel 0, handle 0
         fd.Swap(empty);
         CHECK(!empty);
     }
